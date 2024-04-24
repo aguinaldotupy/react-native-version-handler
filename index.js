@@ -13,11 +13,12 @@ const apps = JSON.parse(fs.readFileSync(json_file));
 const validateInput = () => {
   const args = arg({
     "--tagname": String,
+    "--increment-marketing-version": Boolean,
   });
 
   if (args._.length < 3) {
     console.log(
-      "usage: release [platform] [environment] [app_name] <bump_type=patch|minor|major> --tagname=custom_tag_name"
+      "usage: release [platform] [environment] [app_name] <bump_type=patch|minor|major> --tagname=custom_tag_name --increment-marketing-version=false"
     );
     process.exit(1);
   }
@@ -27,6 +28,7 @@ const validateInput = () => {
   const app_name = args._[2];
   const bump_type = args._[3] || "patch";
   const custom_name_tag = args["--tagname"] || "";
+  const increment_marketing_version = args["--increment-marketing-version"] || false;
 
   if (!["ios", "android"].includes(platform)) {
     console.log(`Platform : ${platform} not found.`);
@@ -57,6 +59,7 @@ const validateInput = () => {
     app_name,
     bump_type,
     custom_name_tag,
+    increment_marketing_version,
   };
 };
 
@@ -88,6 +91,7 @@ class IosRelease {
     this.bump_type = data.bump_type;
     this.base_command = `cd ${this.project_path}/ios && `;
     this.custom_name_tag = data.custom_name_tag;
+    this.increment_marketing_version = data.increment_marketing_version || false;
   }
 
   release = () => {
@@ -130,13 +134,21 @@ class IosRelease {
 
   bump = async () => {
     const version_number = await this.increment_version_number();
+    if (this.increment_marketing_version) {
+      await this.increment_marketing_version_number();
+    }
     return `${this.custom_name_tag || this.environment}-ios-${version_number}`;
   };
 
   increment_version_number = async () => {
     const command = `fastlane run increment_version_number bump_type:"${this.bump_type}" xcodeproj:"${this.xcodeproj}"`;
-    const { stdout, stderr } = await exec(this.base_command + command);
+    await exec(this.base_command + command);
     return await this.get_current_version();
+  };
+
+  increment_marketing_version_number = async () => {
+    const command = `fastlane run increment_version_number_in_xcodeproj bump_type:"${this.bump_type}" xcodeproj:"${this.xcodeproj}"`;
+    await exec(this.base_command + command);
   };
 
   reset_build_number = async () => {
