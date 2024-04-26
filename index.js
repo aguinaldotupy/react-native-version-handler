@@ -134,6 +134,7 @@ class IosRelease {
 
   bump = async () => {
     const version_number = await this.increment_version_number();
+    await this.increment_build_number();
     if (this.increment_marketing_version) {
       await this.increment_marketing_version_number();
     }
@@ -158,23 +159,23 @@ class IosRelease {
 
   increment_build_number = async () => {
     const command = `fastlane run increment_build_number`;
-    const { stdout, stderr } = await exec(this.base_command + command);
+    await exec(this.base_command + command);
     return await this.get_build_number();
   };
 
   get_build_number = async () => {
     const command = `agvtool what-version -terse`;
-    const { stdout, stderr } = await exec(this.base_command + command);
+    const { stdout } = await exec(this.base_command + command);
     return strip(stdout.replace(/^\s+|\s+$/g, ""));
   };
 
   get_current_version = async () => {
     const fastlane_command = `fastlane run get_version_number xcodeproj:"${this.xcodeproj}" target:"${this.target}"`;
+    
     const { stdout, stderr } = await exec(
       `${this.base_command}${fastlane_command}`
     );
-    // const command = `${this.base_command}${fastlane_command} | sed -E "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g"`;
-    // const { stdout, stderr } = await exec(command);
+    
     return strip(
       stdout
         .split(":")
